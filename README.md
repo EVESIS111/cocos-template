@@ -83,7 +83,5 @@ utils.loadNetImg(node, 'xxx', '.jpg');
 * client 游戏主程序
 * sub 游戏子域
 
-### 有需要的老哥可以支持一下（微信：Hjs951222）
-![my-code.png](https://github.com/Hansen-hjs/Hansen-hjs.github.io/blob/master/images/wxcode.jpg "my-code")
 
 
