@@ -40,6 +40,15 @@ export default class Rank extends Popup {
     /** 默认头像 */
     private default_head: cc.SpriteFrame = null;
 
+    /** 缓存每个 item 的子组件引用，避免每次 updateItem 时重复 cc.find 查找 */
+    private itemRefs: Array<{
+        rank: cc.Label,
+        cup: cc.Sprite,
+        head: cc.Sprite,
+        name: cc.Label,
+        score: cc.Label,
+    }> = [];
+
     /** 关闭按钮 */
     private closeBtn() {
         this.rankSwitch(null, "world");
@@ -128,44 +137,37 @@ export default class Rank extends Popup {
     private updateItem() {
         /** 排行榜列表 */
         let list = this.rank_list;
-        // 遍历更新
-        this.item_box.children.forEach((item, i) => {
+        let children = this.item_box.children;
+        // Use cached component references instead of cc.find per item per update
+        for (let i = 0; i < children.length; i++) {
+            let item = children[i];
+            let refs = this.itemRefs[i];
             /** 排名 */
             let index = this.page * this.itemNumber + i;
             if (list[index]) {
                 item.active = true;
-                /** 排名 */
-                let rank = cc.find("rank", item).getComponent(cc.Label);
-                /** 奖杯 */
-                let cup = cc.find("cup", item).getComponent(cc.Sprite);
-                /** 用户头像 */
-                let head = cc.find("head", item).getComponent(cc.Sprite);
-                /** 用户名 */
-                let name = cc.find("name", item).getComponent(cc.Label);
-                /** 分数 */
-                let score = cc.find("score", item).getComponent(cc.Label);
-                // 排名 
+                // 排名
                 if (index < 3) {
-                    cup.node.active = true;
-                    cup.spriteFrame = this.cupImg[index];
-                    rank.node.active = false;
+                    refs.cup.node.active = true;
+                    refs.cup.spriteFrame = this.cupImg[index];
+                    refs.rank.node.active = false;
                 } else {
-                    cup.node.active = false;
-                    rank.node.active = true;
-                    rank.string = (index + 1).toString();
+                    refs.cup.node.active = false;
+                    refs.rank.node.active = true;
+                    refs.rank.string = (index + 1).toString();
                 }
                 // 头像
                 if (list[index].headimgurl) {
-                    utils.loadNetworkImg(head.node, list[index].headimgurl);
+                    utils.loadNetworkImg(refs.head.node, list[index].headimgurl);
                 } else {
-                    head.spriteFrame = this.default_head;
+                    refs.head.spriteFrame = this.default_head;
                 }
-                name.string = list[index].nickname;
-                score.string = list[index].score;
+                refs.name.string = list[index].nickname;
+                refs.score.string = list[index].score;
             } else {
                 item.active = false;
             }
-        });
+        }
         // 判断有无数据
         if (this.rank_list.length == 0) {
             this.none_data.active = true;
@@ -194,6 +196,17 @@ export default class Rank extends Popup {
             const item = cc.instantiate(prefab);
             item.parent = this.item_box;
         }
+        // Cache child component references once, avoiding repeated cc.find lookups in updateItem
+        this.itemRefs = [];
+        this.item_box.children.forEach((child) => {
+            this.itemRefs.push({
+                rank: cc.find("rank", child).getComponent(cc.Label),
+                cup: cc.find("cup", child).getComponent(cc.Sprite),
+                head: cc.find("head", child).getComponent(cc.Sprite),
+                name: cc.find("name", child).getComponent(cc.Label),
+                score: cc.find("score", child).getComponent(cc.Label),
+            });
+        });
     }
 
     /** 测试列表 */

@@ -41,6 +41,12 @@ export default class Main extends cc.Component {
     /** 排行榜 */
     public rankBox: cc.Node = null;
 
+    /** 缓存 ball 的 TheRectMask 组件引用，避免每帧 getComponent 查找 */
+    private ballRectMask: any = null;
+
+    /** 缓存 ball 的 image 子节点引用，避免每次 cc.find 查找 */
+    private ballImageNode: cc.Node = null;
+
     /** 打开排行榜 */
     public openRank() {
         if (this.rankBox) {
@@ -62,21 +68,21 @@ export default class Main extends cc.Component {
 
     /** 设置 ball 颜色 */
     public setBoxColor() {
-        let color = {
-            r: Math.floor(255 * Math.random()) + 1,  
-            g: Math.floor(255 * Math.random()) + 1,
-            b: Math.floor(255 * Math.random()) + 1
+        let r = Math.floor(255 * Math.random()) + 1;
+        let g = Math.floor(255 * Math.random()) + 1;
+        let b = Math.floor(255 * Math.random()) + 1;
+        if (!this.ballImageNode) {
+            this.ballImageNode = cc.find('image', this.ball);
         }
-        // this.ball.color = new cc.color(color);
-        const image = cc.find('image', this.ball);
-        image.color = cc.color(color.r, color.g, color.b);
+        this.ballImageNode.color = cc.color(r, g, b);
     }
 
     /** 从对象池获取子弹 */
     public getBullet() {
         let bullet: cc.Node = null;
         if (this.bulletPool.length > 0) {
-            bullet = this.bulletPool.shift();
+            // Use pop() instead of shift() for O(1) retrieval
+            bullet = this.bulletPool.pop();
         } else {
             bullet = cc.instantiate(this.bulletPrefab);
         }
@@ -225,7 +231,10 @@ export default class Main extends cc.Component {
             this.ball.y = -500;
             this.value = 30;
         }
-        // 自定义的圆角遮罩，只在 onEnable 时更新视图，这里每一帧都变化，所以要重绘
-        this.ball.getComponent('TheRectMask').drawRadius();
+        // Cache the TheRectMask component reference to avoid per-frame string-based getComponent lookup
+        if (!this.ballRectMask) {
+            this.ballRectMask = this.ball.getComponent('TheRectMask');
+        }
+        this.ballRectMask.drawRadius();
     }
 }

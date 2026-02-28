@@ -97,10 +97,11 @@ class GlobalModule {
         window.localStorage.setItem('name', JSON.stringify(this.userData));
     }
 
-    /** 获取数据 */ 
+    /** 获取数据 */
     public fetchData() {
-        let data: any = window.localStorage.getItem('name') ? JSON.parse(window.localStorage.getItem('name')) : null;
-        return data;
+        // Read localStorage once instead of twice
+        let raw = window.localStorage.getItem('name');
+        return raw ? JSON.parse(raw) : null;
     }
     
     /** 清除本地数据 */
