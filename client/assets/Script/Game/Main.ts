@@ -41,6 +41,9 @@ export default class Main extends cc.Component {
     /** 排行榜 */
     public rankBox: cc.Node = null;
 
+    /** 缓存 TheRectMask 组件引用，避免每帧 getComponent 字符串查找 */
+    private ballMask: any = null;
+
     /** 打开排行榜 */
     public openRank() {
         if (this.rankBox) {
@@ -76,7 +79,8 @@ export default class Main extends cc.Component {
     public getBullet() {
         let bullet: cc.Node = null;
         if (this.bulletPool.length > 0) {
-            bullet = this.bulletPool.shift();
+            // pop() is O(1) vs shift() which is O(n) due to re-indexing
+            bullet = this.bulletPool.pop();
         } else {
             bullet = cc.instantiate(this.bulletPrefab);
         }
@@ -202,6 +206,10 @@ export default class Main extends cc.Component {
         utils.setLoadingBox(cc.instantiate(this.loadingBox), this.node);
         // window['bulletPool'] = this.bulletPool;
         this.initTargetNode();
+        // Cache the mask component reference to avoid per-frame string-based getComponent lookup
+        if (this.ball) {
+            this.ballMask = this.ball.getComponent('TheRectMask');
+        }
     }
 
     start() {
@@ -220,12 +228,15 @@ export default class Main extends cc.Component {
     update(dt: number) {
         if (!this.ball) return;
         this.value -= 1 * this.speed;
+        const prevY = this.ball.y;
         this.ball.y += this.value * this.speed;
         if (this.ball.y <= -500) {
             this.ball.y = -500;
             this.value = 30;
         }
-        // 自定义的圆角遮罩，只在 onEnable 时更新视图，这里每一帧都变化，所以要重绘
-        this.ball.getComponent('TheRectMask').drawRadius();
+        // Only redraw the mask when ball position actually changed
+        if (this.ball.y !== prevY && this.ballMask) {
+            this.ballMask.drawRadius();
+        }
     }
 }

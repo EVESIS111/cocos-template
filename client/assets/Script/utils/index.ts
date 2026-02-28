@@ -19,8 +19,8 @@ class utilsModule extends ModuleCCutils {
      * @param key 对应的 key 值
      */
     public fetchData(key: string) {
-        let data = window.localStorage.getItem(key) ? JSON.parse(window.localStorage.getItem(key)) : null;
-        return data;
+        const raw = window.localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : null;
     }
 
     /** 清除本地数据 */

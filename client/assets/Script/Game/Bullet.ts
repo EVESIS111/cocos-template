@@ -23,15 +23,26 @@ export default class Bullet extends cc.Component {
     /** 节点回收范围  */
     private range = {w: 0, h: 0}
 
+    /** 缓存的 sin/cos 值，避免每帧重复计算 */
+    private sinAngle: number = 0;
+    private cosAngle: number = 0;
+
+    /** 度到弧度的转换常量 */
+    private static readonly DEG_TO_RAD: number = Math.PI / 180;
+
     /** 初始化 */
     private init() {
         /** 发射点 */
         let size = 80;
         /** 发射的炮台 */
-        let node = Global.Game.batteryNode; 
+        let node = Global.Game.batteryNode;
         this.node.angle = this.angle = node.angle;
+        /** 缓存三角函数结果 - 角度在发射后不变 */
+        const rad = this.angle * Bullet.DEG_TO_RAD;
+        this.sinAngle = Math.sin(rad);
+        this.cosAngle = Math.cos(rad);
         /** 转换成自己的坐标 */
-        let pos = cc.v2(node.x - size * Math.sin(this.angle / 180 * 3.14), node.y + size * Math.cos(this.angle / 180 * 3.14));
+        let pos = cc.v2(node.x - size * this.sinAngle, node.y + size * this.cosAngle);
         this.node.position = pos;
         this.launch = true;
     }
@@ -56,22 +67,27 @@ export default class Bullet extends cc.Component {
     update (dt: number) {
         if (!this.launch) return;
 
-        this.node.x -= dt * this.speed * Math.sin(this.angle / 180 * 3.14);
-        this.node.y += dt * this.speed * Math.cos(this.angle / 180 * 3.14);
-        
+        // Use cached sin/cos values instead of recalculating every frame
+        const delta = dt * this.speed;
+        this.node.x -= delta * this.sinAngle;
+        this.node.y += delta * this.cosAngle;
+
+        // Check bounds first (cheaper) before collision detection (more expensive)
+        const x = this.node.x;
+        const y = this.node.y;
+        if (x > this.range.w || x < -this.range.w || y > this.range.h || y < -this.range.h) {
+            this.launch = false;
+            Global.Game.putBullet(this.node);
+            return;
+        }
+
         /** 检测是否相交 */
         let intersects = this.node.getBoundingBoxToWorld().intersects(Global.Game.ball.getBoundingBoxToWorld());
-        
+
         if (intersects) {
             this.launch = false;
             Global.Game.putBullet(this.node);
             return Global.Game.setBoxColor();
-            // return cc.log("子弹击中白色盒子");
-        }
-
-        if (this.node.x > this.range.w || this.node.x < -this.range.w || this.node.y > this.range.h || this.node.y < -this.range.h) {
-            this.launch = false;
-            Global.Game.putBullet(this.node);
         }
     }
 }

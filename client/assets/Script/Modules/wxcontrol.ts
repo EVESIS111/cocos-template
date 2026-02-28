@@ -278,48 +278,55 @@ export default class wxcontrol extends wxnetwork {
 
     /**
      * 拉起视频
+     * Reuses the existing videoAd instance when using the default videoID,
+     * only creating a new ad instance for custom videoId.
      * @param reward 领取奖励 function()
      */
     public showVideo(options: OptionsShowVideo) {
         if (this.videoLoading) return this.showToast("视频载入中");
         this.videoLoading = true;
         const THAT = this;
-        /** 视频组件 */
-        let videoAd = wx.createRewardedVideoAd({ "adUnitId": (options.videoId || this.videoID) });
-        /** 销毁视频组件 */
-        function destroyVideoAd() {
+        // Reuse existing videoAd for default ID instead of creating new one each time
+        const useCustomId = options.videoId && options.videoId !== this.videoID;
+        let videoAd = useCustomId
+            ? wx.createRewardedVideoAd({ "adUnitId": options.videoId })
+            : this.videoAd;
+        /** 销毁视频组件（only for custom ad instances） */
+        function cleanupVideoAd() {
             if (videoAd) {
-                // 这里要取消监听
                 videoAd.offClose(closeCallback);
-                videoAd.destroy();
+                // Only destroy custom ad instances, not the shared one
+                if (useCustomId) {
+                    videoAd.destroy();
+                }
                 videoAd = null;
             }
         }
-        /** 
-         * 关闭回调 
+        /**
+         * 关闭回调
          * @param res
         */
         function closeCallback(res: { isEnded: boolean }) {
-            destroyVideoAd();
+            cleanupVideoAd();
+            THAT.videoLoading = false;
             if (res && res.isEnded) {
-                THAT.videoLoading = false;
                 options.success && options.success();
             } else {
-                THAT.videoLoading = false;
                 THAT.showToast("你提前关闭了视频");
             }
         }
-        // videoAd.onLoad(() => {});
         videoAd.load().then(() => {
             videoAd.show();
         }).catch(err => {
             console.log("视频错误 !!! catch >>", err);
-            destroyVideoAd();
+            cleanupVideoAd();
+            THAT.videoLoading = false;
             options.fail && options.fail(err);
         });
         videoAd.onError(err => {
             console.log("视频错误 !!! onError >>", err);
-            destroyVideoAd();
+            cleanupVideoAd();
+            THAT.videoLoading = false;
             options.fail && options.fail(err);
         });
         videoAd.onClose(closeCallback);

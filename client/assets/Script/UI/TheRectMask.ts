@@ -43,32 +43,38 @@ export default class TheRectMask extends cc.Component {
     @property({ visible: false })
     private image: cc.Node = null;
 
+    /** 缓存 Graphics 引用，避免每次 drawRadius 调用 getComponent */
+    private _graphics: cc.Graphics = null;
+
+    /** 缓存的 rect 对象，避免每次创建新的 */
+    private _cachedRect: cc.Rect = cc.rect();
+
     /** 绘制圆角 */
-    private drawRadius() {
-        /** 当前节点尺寸 */
-        let size = this.node.getContentSize();
-        /** 矩形 */
-        let rect = cc.rect(-size.width / 2, -size.height / 2, size.width, size.height);
-        let graphics = this.getComponent(cc.Mask)["_graphics"];
-        this.drawRoundRect(graphics, rect);
+    public drawRadius() {
+        const size = this.node.getContentSize();
+        // Reuse cached rect instead of creating new one
+        this._cachedRect.x = -size.width / 2;
+        this._cachedRect.y = -size.height / 2;
+        this._cachedRect.width = size.width;
+        this._cachedRect.height = size.height;
+        // Use cached graphics reference
+        if (!this._graphics) {
+            this._graphics = this.getComponent(cc.Mask)["_graphics"];
+        }
+        this.drawRoundRect(this._graphics, this._cachedRect);
     }
 
     /**
      * 绘制圆角矩形
-     * @param graphics 
-     * @param rect 
+     * @param graphics
+     * @param rect
      */
     private drawRoundRect(graphics: cc.Graphics, rect: cc.Rect) {
         let { x, y, width, height } = rect;
-        // 清空所有路径
         graphics.clear();
-        // 线条宽度
         graphics.lineWidth = 1;
-        // 矩形
         graphics.roundRect(x, y, width, height, this.radius);
-        // 填充
         graphics.fill();
-        // 绘制
         graphics.stroke();
     }
 
