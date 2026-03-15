@@ -31,7 +31,7 @@ cc.Class({
             var texture = new cc.Texture2D();
             texture.initWithElement(image);
             texture.handleLoadedTexture();
-            var frame = new cc.SpriteFrame(texture); 
+            var frame = new cc.SpriteFrame(texture);
             node.getComponent(cc.Sprite).spriteFrame = frame;
         }
         image.src = src;
@@ -70,55 +70,43 @@ cc.Class({
         this.updateItem();
     },
 
-    // 更新item
+    // 更新item - uses cached component references instead of per-call cc.find
     updateItem: function () {
         var THAT = this;
         /** 排行榜列表 */
         var list = this.rank_list;
-        // console.log('排行榜列表', list);
-        // 遍历更新
-        this.item_box.children.forEach(function (item, i) {
+        var children = this.item_box.children;
+        // 遍历更新 - use for loop instead of forEach for better performance
+        for (var i = 0; i < children.length; i++) {
+            var item = children[i];
             /** 排名 */
             var index = THAT.page * THAT.itemNumber + i;
             if (list[index]) {
                 item.active = true;
-                /** 排名 */
-                var rank = cc.find('rank', item).getComponent(cc.Label);
-                /** 奖杯 */
-                var cup = cc.find('cup', item).getComponent(cc.Sprite);
-                /** 用户头像 */
-                var head = cc.find('head', item).getComponent(cc.Sprite);
-                /** 用户名 */
-                var name = cc.find('name', item).getComponent(cc.Label);
-                /** 分数 */
-                var score = cc.find('score', item).getComponent(cc.Label);
-                // 排名 
+                // Use cached component references instead of cc.find per update
+                var cached = THAT._itemComponents[i];
+                // 排名
                 if (index < 3) {
-                    cup.node.active = true;
-                    cup.spriteFrame = THAT.cupImg[index];
-                    rank.node.active = false;
+                    cached.cup.node.active = true;
+                    cached.cup.spriteFrame = THAT.cupImg[index];
+                    cached.rank.node.active = false;
                 } else {
-                    cup.node.active = false;
-                    rank.node.active = true;
-                    rank.string = index + 1;
+                    cached.cup.node.active = false;
+                    cached.rank.node.active = true;
+                    cached.rank.string = index + 1;
                 }
                 // 头像
-                // if (list[index].avatarUrl) {
-                //     THAT.loadImg(head.node, list[index].avatarUrl);
-                // } else {
-                //     head.spriteFrame = THAT.default_head;
-                // }
-                head.spriteFrame = list[index].spriteFrame;
-                name.string = list[index].nickName;
-                score.string = list[index].score;
+                cached.head.spriteFrame = list[index].spriteFrame;
+                cached.name.string = list[index].nickName;
+                cached.score.string = list[index].score;
             } else {
                 item.active = false;
             }
-        });
+        }
         // 判断有无数据
         if (this.rank_list.length == 0) {
             this.none_data.active = true;
-            this.none_data.getComponent(cc.Label).string = '暂无数据...';
+            this._noneDataLabel.string = '暂无数据...';
             this.page_label.string = '--/--';
         } else {
             this.none_data.active = false;
@@ -134,6 +122,8 @@ cc.Class({
         this.page_label = cc.find('page-label', this.rankBox).getComponent(cc.Label);
         /** 暂无数据提示 */
         this.none_data = cc.find('tip', this.rankBox);
+        /** 缓存 none_data 的 Label 组件 */
+        this._noneDataLabel = this.none_data.getComponent(cc.Label);
         /** 首个item */
         var item = cc.find('item', this.item_box);
         /** item预制体 */
@@ -141,8 +131,20 @@ cc.Class({
         /** 默认头像 */
         this.default_head = cc.find('head', item).getComponent(cc.Sprite).spriteFrame;
         for (var i = 1; i < this.itemNumber; i++) {
-            const item = cc.instantiate(prefab);
-            item.parent = this.item_box;
+            var newItem = cc.instantiate(prefab);
+            newItem.parent = this.item_box;
+        }
+        // Cache component references for all items to avoid repeated cc.find calls in updateItem
+        this._itemComponents = [];
+        var children = this.item_box.children;
+        for (var j = 0; j < children.length; j++) {
+            this._itemComponents.push({
+                rank: cc.find('rank', children[j]).getComponent(cc.Label),
+                cup: cc.find('cup', children[j]).getComponent(cc.Sprite),
+                head: cc.find('head', children[j]).getComponent(cc.Sprite),
+                name: cc.find('name', children[j]).getComponent(cc.Label),
+                score: cc.find('score', children[j]).getComponent(cc.Label),
+            });
         }
     },
 
@@ -183,19 +185,6 @@ cc.Class({
             return b.score - a.score;
         });
 
-        // list = data.map(item => {
-        //     var KVD = JSON.parse(item.KVDataList.filter(list => list.key === 'all')[0].value);
-        //     return {
-        //         openid: item.openid,
-        //         nickName: item.nickname, // 注意这里微信返回的是小写 n
-        //         avatarUrl: item.avatarUrl,
-        //         score: KVD.wxgame.score,
-        //         update_time: KVD.wxgame.update_time,
-        //     }
-        // });
-
-        // list.sort((a, b) => b - a);
-
         for (var i = 0; i < list.length; i++) {
             if (list[i].nickName == slef.nickName && list[i].avatarUrl == slef.avatarUrl) {
                 slefData = list[i];
@@ -215,7 +204,6 @@ cc.Class({
         this.page = 0;
         // 最大页数
         this.page_max = Math.ceil(this.rank_list.length / this.itemNumber);
-        // console.log('子域 排行榜列表 ==============>', THAT.rank_list);
     },
 
     /** 获取数据并生成内容 */
@@ -247,7 +235,7 @@ cc.Class({
 
     /**
      * 上传分数 发送过来的数据
-     * @param {string} score 
+     * @param {string} score
      */
     postScore: function (score) {
         if (this.compareVersion('1.9.92') < 0) return;
@@ -276,7 +264,6 @@ cc.Class({
         wx.getUserCloudStorage({
             keyList: ['all'],
             success: function (res) {
-                // console.log('获得分数数据：', res)
                 if (res.errMsg != 'getUserCloudStorage:ok') return;
                 if (res.KVDataList.length == 0) return postWeChat();
                 var rankData = JSON.parse(res.KVDataList[0].value);
@@ -294,13 +281,15 @@ cc.Class({
     },
 
     /**
-     * 对比版本
+     * 对比版本 - caches system info to avoid repeated wx.getSystemInfoSync() calls
      * @param {string} v2 对比的版本
      */
     compareVersion: function (v2) {
-        /** 当前版本号 */
-        var ver = wx.getSystemInfoSync().SDKVersion;
-        var v1 = ver.split('.');
+        // Cache system info on first call instead of calling getSystemInfoSync every time
+        if (!this._sdkVersion) {
+            this._sdkVersion = wx.getSystemInfoSync().SDKVersion;
+        }
+        var v1 = this._sdkVersion.split('.');
         v2 = v2.split('.');
         var len = Math.max(v1.length, v2.length);
 
@@ -329,18 +318,18 @@ cc.Class({
         this.page = 0;
         this.page_max = 0;
         this.rank_list = [];
+        this._itemComponents = [];
+        this._sdkVersion = null;
+        this._noneDataLabel = null;
         this.init();
-        // this.updateItem();
     },
 
     start: function () {
         var THAT = this;
-        // THAT.log('微信子域执行');
         // 监听显示
         if (window.wx) {
             wx.onMessage(function (data) {
                 var text = data.action;
-                // console.log('子域传参', text);
                 switch (text) {
                     case 'uploadScore':
                         // 上传分数

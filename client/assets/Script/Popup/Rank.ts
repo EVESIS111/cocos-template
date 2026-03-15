@@ -40,6 +40,15 @@ export default class Rank extends Popup {
     /** 默认头像 */
     private default_head: cc.SpriteFrame = null;
 
+    /** 缓存的 item 组件引用，避免每次 updateItem 重复 cc.find + getComponent */
+    private itemComponents: Array<{
+        rank: cc.Label;
+        cup: cc.Sprite;
+        head: cc.Sprite;
+        name: cc.Label;
+        score: cc.Label;
+    }> = [];
+
     /** 关闭按钮 */
     private closeBtn() {
         this.rankSwitch(null, "world");
@@ -124,48 +133,40 @@ export default class Rank extends Popup {
         }
     }
 
-    /** 更新item */
+    /** 更新item - uses cached component references instead of per-call cc.find */
     private updateItem() {
         /** 排行榜列表 */
         let list = this.rank_list;
+        const children = this.item_box.children;
         // 遍历更新
-        this.item_box.children.forEach((item, i) => {
-            /** 排名 */
-            let index = this.page * this.itemNumber + i;
+        for (let i = 0; i < children.length; i++) {
+            const item = children[i];
+            const index = this.page * this.itemNumber + i;
             if (list[index]) {
                 item.active = true;
-                /** 排名 */
-                let rank = cc.find("rank", item).getComponent(cc.Label);
-                /** 奖杯 */
-                let cup = cc.find("cup", item).getComponent(cc.Sprite);
-                /** 用户头像 */
-                let head = cc.find("head", item).getComponent(cc.Sprite);
-                /** 用户名 */
-                let name = cc.find("name", item).getComponent(cc.Label);
-                /** 分数 */
-                let score = cc.find("score", item).getComponent(cc.Label);
-                // 排名 
+                const cached = this.itemComponents[i];
+                // 排名
                 if (index < 3) {
-                    cup.node.active = true;
-                    cup.spriteFrame = this.cupImg[index];
-                    rank.node.active = false;
+                    cached.cup.node.active = true;
+                    cached.cup.spriteFrame = this.cupImg[index];
+                    cached.rank.node.active = false;
                 } else {
-                    cup.node.active = false;
-                    rank.node.active = true;
-                    rank.string = (index + 1).toString();
+                    cached.cup.node.active = false;
+                    cached.rank.node.active = true;
+                    cached.rank.string = (index + 1).toString();
                 }
                 // 头像
                 if (list[index].headimgurl) {
-                    utils.loadNetworkImg(head.node, list[index].headimgurl);
+                    utils.loadNetworkImg(cached.head.node, list[index].headimgurl);
                 } else {
-                    head.spriteFrame = this.default_head;
+                    cached.head.spriteFrame = this.default_head;
                 }
-                name.string = list[index].nickname;
-                score.string = list[index].score;
+                cached.name.string = list[index].nickname;
+                cached.score.string = list[index].score;
             } else {
                 item.active = false;
             }
-        });
+        }
         // 判断有无数据
         if (this.rank_list.length == 0) {
             this.none_data.active = true;
@@ -194,6 +195,17 @@ export default class Rank extends Popup {
             const item = cc.instantiate(prefab);
             item.parent = this.item_box;
         }
+        // Cache component references for all items to avoid repeated cc.find calls in updateItem
+        this.itemComponents = [];
+        this.item_box.children.forEach((child) => {
+            this.itemComponents.push({
+                rank: cc.find("rank", child).getComponent(cc.Label),
+                cup: cc.find("cup", child).getComponent(cc.Sprite),
+                head: cc.find("head", child).getComponent(cc.Sprite),
+                name: cc.find("name", child).getComponent(cc.Label),
+                score: cc.find("score", child).getComponent(cc.Label),
+            });
+        });
     }
 
     /** 测试列表 */

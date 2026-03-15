@@ -40,10 +40,11 @@ export default class Load extends cc.Component {
         let loadCompleted: boolean = false;
         /** 是否请求完成 */
         let requestCompleted: boolean = false;
-        // 从本地拿取数据
-        if (Global.fetchData()) {
+        // 从本地拿取数据（single call instead of double fetch）
+        const localData = Global.fetchData();
+        if (localData) {
             isFetch = true;
-            Global.userData = Global.fetchData();
+            Global.userData = localData;
             console.log('从本地拿取数据 >>', Global.userData);
         }
 

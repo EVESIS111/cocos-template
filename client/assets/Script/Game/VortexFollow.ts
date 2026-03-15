@@ -16,21 +16,34 @@ export default class VortexFollw extends cc.Component {
 
     /** 向量距离 */
     private distance = 0;
-    
+
     private stop = false;
+
+    /** 度到弧度的转换常量 */
+    private static readonly DEG_TO_RAD: number = Math.PI / 180;
+
+    /** 缓存的 Vec2，避免每帧创建新对象 */
+    private _cachedPos: cc.Vec2 = cc.v2();
 
     private init() {
         this.stop = false;
         this.angle = 0;
-        this.distance = (this.target.position.sub(this.node.position)).mag();
+        // Compute distance without creating temporary Vec2 objects
+        const dx = this.target.x - this.node.x;
+        const dy = this.target.y - this.node.y;
+        this.distance = Math.sqrt(dx * dx + dy * dy);
     }
 
     private move() {
         this.angle += 5;
         this.distance = cc.misc.lerp(this.distance, 0, this.speed);
-        const x = (this.target.position.x + this.distance * Math.sin(this.angle * Math.PI / 180)) >> 0;
-        const y = (this.target.position.y + this.distance * Math.cos(this.angle * Math.PI / 180)) >> 0;
-        this.node.position = cc.v2(x, y);
+        const rad = this.angle * VortexFollw.DEG_TO_RAD;
+        // Read target position once per frame instead of twice
+        const tx = this.target.x;
+        const ty = this.target.y;
+        this._cachedPos.x = (tx + this.distance * Math.sin(rad)) >> 0;
+        this._cachedPos.y = (ty + this.distance * Math.cos(rad)) >> 0;
+        this.node.setPosition(this._cachedPos);
         if (this.distance < 1) {
             this.stop = true;
         }
