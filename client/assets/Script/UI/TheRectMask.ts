@@ -25,6 +25,9 @@ export default class TheRectMask extends cc.Component {
     }
     protected set boxRadius(value: number) {
         this.radius = value;
+        // Invalidate cache to force redraw
+        this._lastWidth = 0;
+        this._lastHeight = 0;
         this.drawRadius();
     }
 
@@ -43,33 +46,34 @@ export default class TheRectMask extends cc.Component {
     @property({ visible: false })
     private image: cc.Node = null;
 
-    /** 绘制圆角 */
-    private drawRadius() {
-        /** 当前节点尺寸 */
-        let size = this.node.getContentSize();
-        /** 矩形 */
-        let rect = cc.rect(-size.width / 2, -size.height / 2, size.width, size.height);
-        let graphics = this.getComponent(cc.Mask)["_graphics"];
-        this.drawRoundRect(graphics, rect);
-    }
+    /** 缓存 graphics 引用，避免每帧 getComponent 查找 */
+    private _cachedGraphics: cc.Graphics = null;
 
-    /**
-     * 绘制圆角矩形
-     * @param graphics 
-     * @param rect 
-     */
-    private drawRoundRect(graphics: cc.Graphics, rect: cc.Rect) {
-        let { x, y, width, height } = rect;
-        // 清空所有路径
-        graphics.clear();
-        // 线条宽度
-        graphics.lineWidth = 1;
-        // 矩形
-        graphics.roundRect(x, y, width, height, this.radius);
-        // 填充
-        graphics.fill();
-        // 绘制
-        graphics.stroke();
+    /** 缓存上一次的尺寸，只在尺寸变化时重绘 */
+    private _lastWidth: number = 0;
+    private _lastHeight: number = 0;
+
+    /** 绘制圆角 */
+    public drawRadius() {
+        let size = this.node.getContentSize();
+        // Skip redraw if size hasn't changed since last draw
+        if (size.width === this._lastWidth && size.height === this._lastHeight) {
+            return;
+        }
+        this._lastWidth = size.width;
+        this._lastHeight = size.height;
+        // Cache graphics reference
+        if (!this._cachedGraphics) {
+            this._cachedGraphics = this.getComponent(cc.Mask)["_graphics"];
+        }
+        // Draw directly without allocating a cc.Rect
+        let hw = size.width / 2;
+        let hh = size.height / 2;
+        this._cachedGraphics.clear();
+        this._cachedGraphics.lineWidth = 1;
+        this._cachedGraphics.roundRect(-hw, -hh, size.width, size.height, this.radius);
+        this._cachedGraphics.fill();
+        this._cachedGraphics.stroke();
     }
 
     /** 创建 image */
@@ -86,7 +90,9 @@ export default class TheRectMask extends cc.Component {
     // LIFE-CYCLE CALLBACKS:
 
     onEnable() {
-        // 这里每次都要重新绘画
+        // Invalidate cache and redraw on enable
+        this._lastWidth = 0;
+        this._lastHeight = 0;
         this.drawRadius();
     }
 

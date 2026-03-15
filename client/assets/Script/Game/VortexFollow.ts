@@ -28,9 +28,13 @@ export default class VortexFollw extends cc.Component {
     private move() {
         this.angle += 5;
         this.distance = cc.misc.lerp(this.distance, 0, this.speed);
-        const x = (this.target.position.x + this.distance * Math.sin(this.angle * Math.PI / 180)) >> 0;
-        const y = (this.target.position.y + this.distance * Math.cos(this.angle * Math.PI / 180)) >> 0;
-        this.node.position = cc.v2(x, y);
+        // Read target position once instead of accessing the property getter twice
+        let targetPos = this.target.position;
+        let radian = this.angle * Math.PI / 180;
+        let x = (targetPos.x + this.distance * Math.sin(radian)) >> 0;
+        let y = (targetPos.y + this.distance * Math.cos(radian)) >> 0;
+        // Use setPosition to avoid creating a new cc.v2 object every frame
+        this.node.setPosition(x, y);
         if (this.distance < 1) {
             this.stop = true;
         }
