@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [Unreleased] - 2026-03-21
+
+### Summary
+
+No new code changes merged this week. Three performance optimization pull requests ([#1](https://github.com/EVESIS111/cocos-template/pull/1), [#2](https://github.com/EVESIS111/cocos-template/pull/2)) and the previous changelog PR ([#3](https://github.com/EVESIS111/cocos-template/pull/3)) remain open and awaiting review.
+
+**Recommended action:** Review and merge open PRs to ship performance improvements.
+
+---
+
 ## [Unreleased] - 2026-03-14
 
 ### Summary
@@ -72,4 +82,4 @@ Two performance optimization pull requests are open targeting the game engine's 
 
 ---
 
-*Generated automatically on 2026-03-14 by Tembo daily changelog workflow.*
+*Generated automatically on 2026-03-21 by Tembo daily changelog workflow.*
